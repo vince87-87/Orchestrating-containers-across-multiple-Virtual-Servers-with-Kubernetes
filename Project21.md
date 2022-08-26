@@ -126,6 +126,7 @@ Generate the CA configuration file, Root Certificate, and Private key:
 
 mkdir ca-authority && cd ca-authority
 
+```
 cat > ca-config.json <<EOF
 {
   "signing": {
@@ -141,9 +142,10 @@ cat > ca-config.json <<EOF
   }
 }
 EOF
-
+```
 <img width="603" alt="image" src="https://user-images.githubusercontent.com/49937302/186793341-03c6ca10-f9d8-446d-9cee-d3fb54de88a5.png">
 
+```
 cat > ca-csr.json <<EOF
 {
   "CN": "Kubernetes",
@@ -162,6 +164,135 @@ cat > ca-csr.json <<EOF
   ]
 }
 EOF
+```
 
 <img width="506" alt="image" src="https://user-images.githubusercontent.com/49937302/186793388-ba876ce1-41f4-492b-a6fc-2e66877b9ff1.png">
 
+cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+
+<img width="798" alt="image" src="https://user-images.githubusercontent.com/49937302/186794615-d1671e65-b973-479c-b9e9-0ee5cc2e82b8.png">
+
+**The 3 important files here are:**
+
+ca.pem – The Root Certificate
+ca-key.pem – The Private Key
+ca.csr – The Certificate Signing Request
+
+Generating TLS Certificates For Client and Server
+
+You will need to provision Client/Server certificates for all the components. It is a MUST to have encrypted communication within the cluster. Therefore, the server here are the master nodes running the api-server component. While the client is every other component that needs to communicate with the api-server.
+
+Now we have a certificate for the Root CA, we can then begin to request more certificates which the different Kubernetes components, i.e. clients and server, will use to have encrypted communication.
+
+Remember, the clients here refer to every other component that will communicate with the api-server. These are:
+
+kube-controller-manager
+
+kube-scheduler
+
+etcd
+
+kubelet
+
+kube-proxy
+
+Kubernetes Admin User
+
+## Let us begin with the Kubernetes API-Server Certificate and Private Key
+
+The certificate for the Api-server must have IP addresses, DNS names, and a Load Balancer address included. Otherwise, you will have a lot of difficulties connecting to the api-server.
+
+Generate the Certificate Signing Request (CSR), Private Key and the Certificate for the Kubernetes Master Nodes.
+
+```
+
+cat > master-kubernetes-csr.json <<EOF
+{
+  "CN": "kubernetes",
+   "hosts": [
+   "127.0.0.1",
+   "172.31.0.10",
+   "172.31.0.11",
+   "172.31.0.12",
+   "ip-172-31-0-10",
+   "ip-172-31-0-11",
+   "ip-172-31-0-12",
+   "ip-172-31-0-10.${AWS_REGION}.compute.internal",
+   "ip-172-31-0-11.${AWS_REGION}.compute.internal",
+   "ip-172-31-0-12.${AWS_REGION}.compute.internal",
+   "${KUBERNETES_PUBLIC_ADDRESS}",
+   "kubernetes",
+   "kubernetes.default",
+   "kubernetes.default.svc",
+   "kubernetes.default.svc.cluster",
+   "kubernetes.default.svc.cluster.local"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "UK",
+      "L": "England",
+      "O": "Kubernetes",
+      "OU": "DAREY.IO DEVOPS",
+      "ST": "London"
+    }
+  ]
+}
+EOF
+
+cfssl gencert \
+  -ca=ca.pem \
+  -ca-key=ca-key.pem \
+  -config=ca-config.json \
+  -profile=kubernetes \
+  master-kubernetes-csr.json | cfssljson -bare master-kubernetes
+  
+```
+<img width="801" alt="image" src="https://user-images.githubusercontent.com/49937302/186795472-25a89d7d-83cd-41e7-8673-9ecc4bdd7ff2.png">
+
+Creating the other certificates: for the following Kubernetes components:
+
+Scheduler Client Certificate
+
+Kube Proxy Client Certificate
+
+Controller Manager Client Certificate
+
+Kubelet Client Certificates
+
+K8s admin user Client Certificate
+
+### kube-scheduler Client Certificate and Private Key
+
+```
+
+cat > kube-scheduler-csr.json <<EOF
+{
+  "CN": "system:kube-scheduler",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "UK",
+      "L": "England",
+      "O": "system:kube-scheduler",
+      "OU": "DAREY.IO DEVOPS",
+      "ST": "London"
+    }
+  ]
+}
+EOF
+
+cfssl gencert \
+  -ca=ca.pem \
+  -ca-key=ca-key.pem \
+  -config=ca-config.json \
+  -profile=kubernetes \
+  kube-scheduler-csr.json | cfssljson -bare kube-scheduler
+
+```
