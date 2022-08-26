@@ -70,9 +70,9 @@ Configure DHCP Options
 
 <img width="1440" alt="image" src="https://user-images.githubusercontent.com/49937302/186785064-84a0e71d-2cfa-403d-8bf1-cfdc56fa78c8.png">
 
-Create IGW/Route table/Subnets
+**Create IGW/Route table/Subnets**
 
-Create Security Group
+**Create Security Group**
 
 Master & Worker node port requirement
 
@@ -84,7 +84,7 @@ Allow inbound Traffic based on k8 port requirement
 
 <img width="1430" alt="image" src="https://user-images.githubusercontent.com/49937302/186787651-53242898-73da-43aa-8e55-e620d695ca4b.png">
 
-Create Load Balancer & target group
+**Create Load Balancer & target group**
 
 <img width="1421" alt="image" src="https://user-images.githubusercontent.com/49937302/186789431-5fa2eed3-7e55-415f-aeb7-5b2334a354f4.png">
 
@@ -92,5 +92,8 @@ Create Load Balancer & target group
 
 <img width="1438" alt="image" src="https://user-images.githubusercontent.com/49937302/186789560-605b76bc-5bf1-4c7c-b264-e46777e6067f.png">
 
+**Create Master/Worker node**
+
+<img width="1439" alt="image" src="https://user-images.githubusercontent.com/49937302/186792129-5b9dc03a-c7b7-465d-b433-f14bd408badb.png">
 
 
