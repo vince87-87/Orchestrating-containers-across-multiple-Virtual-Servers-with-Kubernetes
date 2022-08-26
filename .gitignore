@@ -2,6 +2,7 @@
 **/.terraform/*
 mtc-terraform/*
 ./mtc-terraform
+ca-authority/*
 
 # .tfstate files
 *.tfstate
