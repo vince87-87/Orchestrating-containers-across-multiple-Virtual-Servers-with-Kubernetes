@@ -96,4 +96,72 @@ Allow inbound Traffic based on k8 port requirement
 
 <img width="1439" alt="image" src="https://user-images.githubusercontent.com/49937302/186792129-5b9dc03a-c7b7-465d-b433-f14bd408badb.png">
 
+# Step 3 Prepare The Self-Signed Certificate Authority And Generate TLS Certificates
+
+The following components running on the Master node will require TLS certificates.
+
+kube-controller-manager
+
+kube-scheduler
+
+etcd
+
+kube-apiserver
+
+The following components running on the Worker nodes will require TLS certificates.
+
+kubelet
+
+kube-proxy
+
+Self-Signed Root Certificate Authority (CA)
+
+Here, you will provision a CA that will be used to sign additional TLS certificates.
+
+Create a directory and cd into it:
+
+mkdir ca-authority && cd ca-authority
+
+Generate the CA configuration file, Root Certificate, and Private key:
+
+mkdir ca-authority && cd ca-authority
+
+cat > ca-config.json <<EOF
+{
+  "signing": {
+    "default": {
+      "expiry": "8760h"
+    },
+    "profiles": {
+      "kubernetes": {
+        "usages": ["signing", "key encipherment", "server auth", "client auth"],
+        "expiry": "8760h"
+      }
+    }
+  }
+}
+EOF
+
+<img width="603" alt="image" src="https://user-images.githubusercontent.com/49937302/186793341-03c6ca10-f9d8-446d-9cee-d3fb54de88a5.png">
+
+cat > ca-csr.json <<EOF
+{
+  "CN": "Kubernetes",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "UK",
+      "L": "England",
+      "O": "Kubernetes",
+      "OU": "DAREY.IO DEVOPS",
+      "ST": "London"
+    }
+  ]
+}
+EOF
+
+<img width="506" alt="image" src="https://user-images.githubusercontent.com/49937302/186793388-ba876ce1-41f4-492b-a6fc-2e66877b9ff1.png">
 
