@@ -699,3 +699,47 @@ done
 
 ```
 <img width="800" alt="image" src="https://user-images.githubusercontent.com/49937302/187002996-b4ff0b8c-8b66-4150-a06f-d596494a6654.png">
+
+## STEP 6 PREPARE THE ETCD DATABASE FOR ENCRYPTION AT REST.
+
+Kubernetes uses etcd (A distributed key value store) to store variety of data which includes the cluster state, application configurations, and secrets. By default, the data that is being persisted to the disk is not encrypted. Any attacker that is able to gain access to this database can exploit the cluster since the data is stored in plain text. Hence, it is a security risk for Kubernetes that needs to be addressed.
+
+To mitigate this risk, we must prepare to encrypt etcd at rest. "At rest" means data that is stored and persists on a disk. Anytime you hear "in-flight" or "in transit" refers to data that is being transferred over the network. "In-flight" encryption is done through TLS.
+
+Generate the encryption key and encode it using base64
+
+ETCD_ENCRYPTION_KEY=$(head -c 64 /dev/urandom | base64) 
+
+** Create an encryption-config.yaml
+
+```
+cat > encryption-config.yaml <<EOF
+kind: EncryptionConfig
+apiVersion: v1
+resources:
+  - resources:
+      - secrets
+    providers:
+      - aescbc:
+          keys:
+            - name: key1
+              secret: ${ETCD_ENCRYPTION_KEY}
+      - identity: {}
+EOF
+```
+
+copy encryption-config.yaml to control nodes
+
+```
+
+for i in 0 1 2; do
+instance="${NAME}-master-${i}" \
+  external_ip=$(aws ec2 describe-instances --profile AWSAdministratorAccess-877249880464 \
+    --filters "Name=tag:Name,Values=${instance}" \
+    --output text --query 'Reservations[].Instances[].PublicIpAddress')
+  scp -i k8s-cluster-from-ground-up.pem \
+    encryption-config.yaml ubuntu@${external_ip}:~/;
+done
+
+```
+
