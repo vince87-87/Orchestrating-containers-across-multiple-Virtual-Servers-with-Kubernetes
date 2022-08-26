@@ -57,3 +57,40 @@ cfssljson --version
 <img width="458" alt="image" src="https://user-images.githubusercontent.com/49937302/186782948-66185897-b676-4301-a593-4b85ba71da68.png">
 
 brew install cfssl
+
+# Step 1 – Configure Network Infrastructure (manually)
+
+Create VPC
+
+<img width="1415" alt="image" src="https://user-images.githubusercontent.com/49937302/186784239-e66df605-63a1-4dad-aa52-85374e06962d.png">
+
+Configure DHCP Options
+
+<img width="1429" alt="image" src="https://user-images.githubusercontent.com/49937302/186784851-48e91bcc-e0c4-4763-a82d-6de731404d16.png">
+
+<img width="1440" alt="image" src="https://user-images.githubusercontent.com/49937302/186785064-84a0e71d-2cfa-403d-8bf1-cfdc56fa78c8.png">
+
+Create IGW/Route table/Subnets
+
+Create Security Group
+
+Master & Worker node port requirement
+
+https://kubernetes.io/docs/reference/ports-and-protocols/
+
+<img width="738" alt="image" src="https://user-images.githubusercontent.com/49937302/186788036-79826a85-c18e-4eb0-8d48-b442789c8fac.png">
+
+Allow inbound Traffic based on k8 port requirement
+
+<img width="1430" alt="image" src="https://user-images.githubusercontent.com/49937302/186787651-53242898-73da-43aa-8e55-e620d695ca4b.png">
+
+Create Load Balancer & target group
+
+<img width="1421" alt="image" src="https://user-images.githubusercontent.com/49937302/186789431-5fa2eed3-7e55-415f-aeb7-5b2334a354f4.png">
+
+<img width="1415" alt="image" src="https://user-images.githubusercontent.com/49937302/186789972-b2839ba0-906b-4e1c-ace8-5c99102bedad.png">
+
+<img width="1438" alt="image" src="https://user-images.githubusercontent.com/49937302/186789560-605b76bc-5bf1-4c7c-b264-e46777e6067f.png">
+
+
+
