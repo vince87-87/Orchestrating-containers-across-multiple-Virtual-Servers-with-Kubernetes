@@ -678,7 +678,9 @@ for i in 0 1 2; do
 done
 
 ```
-
+<img width="797" alt="image" src="https://user-images.githubusercontent.com/49937302/187002925-da2c254c-851d-432f-a036-8f3b25038a7f.png">
+  
+  
 ### copy  kube-scheduler & kubecontroller kubeconfig to master nodes
 
 Copy these files securely to the master nodes using scp utility
@@ -696,4 +698,4 @@ instance="${NAME}-master-${i}" \
 done
 
 ```
-The kube-proxy, kube-controller-manager, kube-scheduler, and kubelet client certificates will be used to generate client authentication configuration files later.
+<img width="800" alt="image" src="https://user-images.githubusercontent.com/49937302/187002996-b4ff0b8c-8b66-4150-a06f-d596494a6654.png">
