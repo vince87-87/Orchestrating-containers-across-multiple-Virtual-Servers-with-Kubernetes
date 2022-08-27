@@ -205,6 +205,7 @@ The certificate for the Api-server must have IP addresses, DNS names, and a Load
 Generate the Certificate Signing Request (CSR), Private Key and the Certificate for the Kubernetes Master Nodes.
 
 ```
+KUBERNETES_API_SERVER_ADDRESS=$(aws elbv2 describe-load-balancers --profile AWSAdministratorAccess-877249880464 --load-balancer-arns ${LOAD_BALANCER_ARN} --output text --query 'LoadBalancers[].DNSName')
 
 cat > master-kubernetes-csr.json <<EOF
 {
@@ -220,7 +221,7 @@ cat > master-kubernetes-csr.json <<EOF
    "ip-172-31-0-10.${AWS_REGION}.compute.internal",
    "ip-172-31-0-11.${AWS_REGION}.compute.internal",
    "ip-172-31-0-12.${AWS_REGION}.compute.internal",
-   "${KUBERNETES_PUBLIC_ADDRESS}",
+   "${KUBERNETES_API_SERVER_ADDRESS}",
    "kubernetes",
    "kubernetes.default",
    "kubernetes.default.svc",
@@ -472,7 +473,7 @@ cfssl gencert \
 
 Let us begin with the worker nodes:
 
-Copy these files securely to the worker nodes using scp utility
+**Copy these files securely to the worker nodes using scp utility**
 
 ```
 for i in 0 1 2; do
@@ -486,7 +487,7 @@ done
 
 ```
 
-Copy these files securely to the master nodes using scp utility
+**Copy these files securely to the master nodes using scp utility**
 
 Master node: – Note that only the api-server related files will be sent over to the master nodes.
 
@@ -854,9 +855,286 @@ sudo systemctl enable etcd
 sudo systemctl start etcd
 
 **Verify the etcd installation**
-  
+
+```
+sudo ETCDCTL_API=3 etcdctl member list \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/etcd/ca.pem \
+  --cert=/etc/etcd/master-kubernetes.pem \
+  --key=/etc/etcd/master-kubernetes-key.pem
+
 systemctl status etcd
+```
+
 
   <img width="736" alt="image" src="https://user-images.githubusercontent.com/49937302/187018112-842818bb-4043-412a-8128-1ac204d23151.png">
 
   <img width="833" alt="image" src="https://user-images.githubusercontent.com/49937302/187018023-9c2353af-dd22-4fa5-b1fe-88b46420f168.png">
+
+## BOOTSTRAP THE CONTROL PLANE
+
+**Create the Kubernetes configuration directory**
+
+sudo mkdir -p /etc/kubernetes/config
+
+**Download the official Kubernetes release binaries**
+
+```
+wget -q --show-progress --https-only --timestamping \
+"https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-apiserver" \
+"https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-controller-manager" \
+"https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-scheduler" \
+"https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl"
+```
+**Install the Kubernetes binaries**
+
+chmod +x kube-apiserver kube-controller-manager kube-scheduler kubectl
+
+sudo mv kube-apiserver kube-controller-manager kube-scheduler kubectl /usr/local/bin/
+
+**Configure the Kubernetes API Server**
+
+sudo mkdir -p /var/lib/kubernetes/
+
+sudo mv ca.pem ca-key.pem master-kubernetes-key.pem master-kubernetes.pem \
+service-account-key.pem service-account.pem \
+encryption-config.yaml /var/lib/kubernetes/
+
+**The instance internal IP address will be used to advertise the API Server to members of the cluster. Retrieve the internal IP address for the current compute instance**
+
+export INTERNAL_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
+
+**Create the kube-apiserver.service systemd unit file: Ensure to read each startup flag used in below systemd file from the documentation here**
+
+```
+
+cat <<EOF | sudo tee /etc/systemd/system/kube-apiserver.service
+[Unit]
+Description=Kubernetes API Server
+Documentation=https://github.com/kubernetes/kubernetes
+
+[Service]
+ExecStart=/usr/local/bin/kube-apiserver \\
+  --advertise-address=${INTERNAL_IP} \\
+  --allow-privileged=true \\
+  --apiserver-count=3 \\
+  --audit-log-maxage=30 \\
+  --audit-log-maxbackup=3 \\
+  --audit-log-maxsize=100 \\
+  --audit-log-path=/var/log/audit.log \\
+  --authorization-mode=Node,RBAC \\
+  --bind-address=0.0.0.0 \\
+  --client-ca-file=/var/lib/kubernetes/ca.pem \\
+  --enable-admission-plugins=NamespaceLifecycle,NodeRestriction,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota \\
+  --etcd-cafile=/var/lib/kubernetes/ca.pem \\
+  --etcd-certfile=/var/lib/kubernetes/master-kubernetes.pem \\
+  --etcd-keyfile=/var/lib/kubernetes/master-kubernetes-key.pem\\
+  --etcd-servers=https://172.31.0.10:2379,https://172.31.0.11:2379,https://172.31.0.12:2379 \\
+  --event-ttl=1h \\
+  --encryption-provider-config=/var/lib/kubernetes/encryption-config.yaml \\
+  --kubelet-certificate-authority=/var/lib/kubernetes/ca.pem \\
+  --kubelet-client-certificate=/var/lib/kubernetes/master-kubernetes.pem \\
+  --kubelet-client-key=/var/lib/kubernetes/master-kubernetes-key.pem \\
+  --runtime-config='api/all=true' \\
+  --service-account-key-file=/var/lib/kubernetes/service-account.pem \\
+  --service-account-signing-key-file=/var/lib/kubernetes/service-account-key.pem \\
+  --service-account-issuer=https://${INTERNAL_IP}:6443 \\
+  --service-cluster-ip-range=172.32.0.0/24 \\
+  --service-node-port-range=30000-32767 \\
+  --tls-cert-file=/var/lib/kubernetes/master-kubernetes.pem \\
+  --tls-private-key-file=/var/lib/kubernetes/master-kubernetes-key.pem \\
+  --v=2
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+```
+
+**Configure the Kubernetes Controller Manager**
+
+Move the kube-controller-manager kubeconfig into place:
+
+sudo mv kube-controller-manager.kubeconfig /var/lib/kubernetes/
+
+**Export some variables to retrieve the vpc_cidr**
+```
+
+export AWS_METADATA="http://169.254.169.254/latest/meta-data"
+export EC2_MAC_ADDRESS=$(curl -s $AWS_METADATA/network/interfaces/macs/ | head -n1 | tr -d '/')
+export VPC_CIDR=$(curl -s $AWS_METADATA/network/interfaces/macs/$EC2_MAC_ADDRESS/vpc-ipv4-cidr-block/)
+export NAME=k8s-cluster-from-ground-up
+
+```
+
+**Create the kube-controller-manager.service systemd unit file**
+```
+
+cat <<EOF | sudo tee /etc/systemd/system/kube-controller-manager.service
+[Unit]
+Description=Kubernetes Controller Manager
+Documentation=https://github.com/kubernetes/kubernetes
+
+[Service]
+ExecStart=/usr/local/bin/kube-controller-manager \\
+  --bind-address=0.0.0.0 \\
+  --cluster-cidr=${VPC_CIDR} \\
+  --cluster-name=${NAME} \\
+  --cluster-signing-cert-file=/var/lib/kubernetes/ca.pem \\
+  --cluster-signing-key-file=/var/lib/kubernetes/ca-key.pem \\
+  --kubeconfig=/var/lib/kubernetes/kube-controller-manager.kubeconfig \\
+  --authentication-kubeconfig=/var/lib/kubernetes/kube-controller-manager.kubeconfig \\
+  --authorization-kubeconfig=/var/lib/kubernetes/kube-controller-manager.kubeconfig \\
+  --leader-elect=true \\
+  --root-ca-file=/var/lib/kubernetes/ca.pem \\
+  --service-account-private-key-file=/var/lib/kubernetes/service-account-key.pem \\
+  --service-cluster-ip-range=172.32.0.0/24 \\
+  --use-service-account-credentials=true \\
+  --v=2
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+```
+
+**Configure the Kubernetes Scheduler**
+
+Move the kube-scheduler kubeconfig into place:
+
+sudo mv kube-scheduler.kubeconfig /var/lib/kubernetes/
+
+sudo mkdir -p /etc/kubernetes/config
+
+**Create the kube-scheduler.yaml configuration file**
+```
+
+cat <<EOF | sudo tee /etc/kubernetes/config/kube-scheduler.yaml
+apiVersion: kubescheduler.config.k8s.io/v1beta1
+kind: KubeSchedulerConfiguration
+clientConnection:
+  kubeconfig: "/var/lib/kubernetes/kube-scheduler.kubeconfig"
+leaderElection:
+  leaderElect: true
+EOF
+
+```
+
+**Create the kube-scheduler.service systemd unit file**
+
+```
+
+cat <<EOF | sudo tee /etc/systemd/system/kube-scheduler.service
+[Unit]
+Description=Kubernetes Scheduler
+Documentation=https://github.com/kubernetes/kubernetes
+
+[Service]
+ExecStart=/usr/local/bin/kube-scheduler \\
+  --config=/etc/kubernetes/config/kube-scheduler.yaml \\
+  --v=2
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+**Start the Controller Services**
+
+sudo systemctl daemon-reload
+
+sudo systemctl enable kube-apiserver kube-controller-manager kube-scheduler
+
+sudo systemctl start kube-apiserver kube-controller-manager kube-scheduler
+
+Check the status of the services. Start with the kube-scheduler and  kube-controller-manager. It may take up to 20 seconds for kube-apiserver to be fully loaded.
+
+**verify service is up**
+
+sudo systemctl status kube-apiserver
+
+sudo systemctl status kube-controller-manager
+
+sudo systemctl status kube-scheduler
+
+**If kube-apiserver service not able to start**
+
+journalctl -u kube-apiserver.service # check the apiserver service logs
+
+ETCD_ENCRYPTION_KEY=$(head -c 32 /dev/urandom | base64)  # change to 32bit 
+
+echo $ETCD_ENCRYPTION_KEY 
+
+vi /var/lib/kubernetes/encryption-config.yaml # replace secret with 32bit encryption
+
+sudo systemctl daemon-reload
+
+sudo systemctl start kube-apiserver
+
+**To get the cluster details run**
+
+kubectl cluster-info  --kubeconfig admin.kubeconfig
+
+**To get the current namespaces**
+
+kubectl get namespaces --kubeconfig admin.kubeconfig
+
+**To get the status of each component**
+
+kubectl get componentstatuses --kubeconfig admin.kubeconfig
+
+**configure Role Based Access Control (RBAC) so that the api-server has necessary authorization for for the kubelet**
+
+Create the ClusterRole:
+```
+
+cat <<EOF | kubectl apply --kubeconfig admin.kubeconfig -f -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+  labels:
+    kubernetes.io/bootstrapping: rbac-defaults
+  name: system:kube-apiserver-to-kubelet
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes/proxy
+      - nodes/stats
+      - nodes/log
+      - nodes/spec
+      - nodes/metrics
+    verbs:
+      - "*"
+EOF
+```
+
+**Create the ClusterRoleBinding to bind the kubernetes user with the role created above**
+
+```
+
+cat <<EOF | kubectl --kubeconfig admin.kubeconfig  apply -f -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system:kube-apiserver
+  namespace: ""
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:kube-apiserver-to-kubelet
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: kubernetes
+EOF
+
+```
