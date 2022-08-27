@@ -855,3 +855,5 @@ sudo systemctl start etcd
 
 **Verify the etcd installation**
 systemctl status etcd
+
+  <img width="833" alt="image" src="https://user-images.githubusercontent.com/49937302/187018023-9c2353af-dd22-4fa5-b1fe-88b46420f168.png">
