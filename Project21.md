@@ -854,6 +854,9 @@ sudo systemctl enable etcd
 sudo systemctl start etcd
 
 **Verify the etcd installation**
+  
 systemctl status etcd
+
+  <img width="736" alt="image" src="https://user-images.githubusercontent.com/49937302/187018112-842818bb-4043-412a-8128-1ac204d23151.png">
 
   <img width="833" alt="image" src="https://user-images.githubusercontent.com/49937302/187018023-9c2353af-dd22-4fa5-b1fe-88b46420f168.png">
