@@ -1603,7 +1603,14 @@ link: https://blog.csdn.net/weixin_44559544/article/details/123497742
 
 ```
 
+<img width="1043" alt="image" src="https://user-images.githubusercontent.com/49937302/187059071-f2ceb4b6-3651-4c1d-8c59-d61b8dddc2d0.png">
+
+<img width="545" alt="image" src="https://user-images.githubusercontent.com/49937302/187059109-3064d898-1496-46a9-a212-3211ee4feaea.png">
+
+  
 **verify worker node in ready state**
 
 kubectl get nodes --kubeconfig admin.kubeconfig -o wide
+
+<img width="1007" alt="image" src="https://user-images.githubusercontent.com/49937302/187059133-c70f0ba8-6300-49fe-a9ba-78881c1f33da.png">
 
