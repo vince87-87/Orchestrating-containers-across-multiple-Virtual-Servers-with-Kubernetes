@@ -1602,6 +1602,7 @@ sudo systemctl restart kubelet
 link: https://blog.csdn.net/weixin_44559544/article/details/123497742
 
 ```
+<img width="446" alt="image" src="https://user-images.githubusercontent.com/49937302/187059193-6604e58e-0dcc-45cd-b593-893018deb97c.png">
 
 <img width="1043" alt="image" src="https://user-images.githubusercontent.com/49937302/187059071-f2ceb4b6-3651-4c1d-8c59-d61b8dddc2d0.png">
 
