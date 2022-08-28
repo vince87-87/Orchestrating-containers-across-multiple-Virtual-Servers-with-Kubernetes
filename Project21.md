@@ -1584,10 +1584,11 @@ EOF
 
 **Reload configurations and start both services**
 
-
+```
   sudo systemctl daemon-reload
   sudo systemctl enable docker kubelet kube-proxy
   sudo systemctl start docker kubelet kube-proxy
+```
 
 **troubleshooting step if encountered this error: "Failed to run kubelet" err="failed to run Kubelet: misconfiguration: kubelet cgroup driver: \"cgroupfs\" is different from docker cgroup driver: \"systemd\""**
 
